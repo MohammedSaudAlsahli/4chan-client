@@ -1,0 +1,252 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-05T15:00:38.783665+00:00",
+  "title": "Design System: Boardwalk",
+  "extensions": {
+    "platform": "Android / Jetpack Compose Material 3",
+    "sourceFiles": [
+      "app/src/main/java/app/boardwalk/ui/Theme.kt",
+      "app/src/main/java/app/boardwalk/ui/Components.kt",
+      "app/src/main/java/app/boardwalk/ui/BoardwalkApp.kt",
+      "app/src/main/java/app/boardwalk/ui/MediaViewer.kt",
+      "app/src/main/java/app/boardwalk/ui/SettingsScreen.kt",
+      "app/src/main/java/app/boardwalk/ui/HomeScreen.kt",
+      "app/src/main/java/app/boardwalk/ui/LocalDocuments.kt"
+    ],
+    "unitPolicy": "Normative geometry is dp; typography inherits native Material 3 Typography() in scalable sp. No CSS pixel conversion is normative.",
+    "colorMeta": {
+      "light-primary": {
+        "role": "primary",
+        "displayName": "Light Primary"
+      },
+      "light-primary-container": {
+        "role": "primary",
+        "displayName": "Light Primary Container"
+      },
+      "light-on-primary-container": {
+        "role": "primary",
+        "displayName": "Light On Primary Container"
+      },
+      "light-secondary": {
+        "role": "secondary",
+        "displayName": "Light Secondary"
+      },
+      "light-secondary-container": {
+        "role": "secondary",
+        "displayName": "Light Secondary Container"
+      },
+      "light-background": {
+        "role": "neutral",
+        "displayName": "Light Background"
+      },
+      "light-surface": {
+        "role": "neutral",
+        "displayName": "Light Surface"
+      },
+      "light-surface-container": {
+        "role": "neutral",
+        "displayName": "Light Surface Container"
+      },
+      "light-surface-container-low": {
+        "role": "neutral",
+        "displayName": "Light Surface Container Low"
+      },
+      "light-surface-container-highest": {
+        "role": "neutral",
+        "displayName": "Light Surface Container Highest"
+      },
+      "light-on-surface": {
+        "role": "neutral",
+        "displayName": "Light On Surface"
+      },
+      "light-on-surface-variant": {
+        "role": "neutral",
+        "displayName": "Light On Surface Variant"
+      },
+      "light-outline-variant": {
+        "role": "neutral",
+        "displayName": "Light Outline Variant"
+      },
+      "dark-primary": {
+        "role": "primary",
+        "displayName": "Dark Primary"
+      },
+      "dark-on-primary": {
+        "role": "primary",
+        "displayName": "Dark On Primary"
+      },
+      "dark-primary-container": {
+        "role": "primary",
+        "displayName": "Dark Primary Container"
+      },
+      "dark-on-primary-container": {
+        "role": "primary",
+        "displayName": "Dark On Primary Container"
+      },
+      "dark-secondary": {
+        "role": "secondary",
+        "displayName": "Dark Secondary"
+      },
+      "dark-secondary-container": {
+        "role": "secondary",
+        "displayName": "Dark Secondary Container"
+      },
+      "dark-background": {
+        "role": "neutral",
+        "displayName": "Dark Background"
+      },
+      "dark-surface": {
+        "role": "neutral",
+        "displayName": "Dark Surface"
+      },
+      "dark-surface-container": {
+        "role": "neutral",
+        "displayName": "Dark Surface Container"
+      },
+      "dark-surface-container-low": {
+        "role": "neutral",
+        "displayName": "Dark Surface Container Low"
+      },
+      "dark-surface-container-highest": {
+        "role": "neutral",
+        "displayName": "Dark Surface Container Highest"
+      },
+      "dark-on-surface": {
+        "role": "neutral",
+        "displayName": "Dark On Surface"
+      },
+      "dark-on-surface-variant": {
+        "role": "neutral",
+        "displayName": "Dark On Surface Variant"
+      },
+      "dark-outline-variant": {
+        "role": "neutral",
+        "displayName": "Dark Outline Variant"
+      },
+      "light-on-primary": {
+        "role": "primary",
+        "displayName": "Light On Primary"
+      },
+      "viewer-background": {
+        "role": "neutral",
+        "displayName": "Viewer Background"
+      },
+      "viewer-foreground": {
+        "role": "neutral",
+        "displayName": "Viewer Foreground"
+      },
+      "viewer-muted": {
+        "role": "neutral",
+        "displayName": "Viewer Muted"
+      },
+      "viewer-error": {
+        "role": "neutral",
+        "displayName": "Viewer Error"
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "gallery-paging",
+        "value": "HorizontalPager / animateScrollToPage (Compose defaults)",
+        "purpose": "Swipe or arrow-button paging; disabled while zoomed."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "navigation-rail",
+        "value": "700dp"
+      }
+    ],
+    "nativeComponents": [
+      {
+        "name": "MediaThumbnail",
+        "source": "Components.kt",
+        "refersTo": "media-thumbnail",
+        "behavior": "Independent accessible button; crops media; spoiler concealment; format badge; loading/error icons."
+      },
+      {
+        "name": "ThreadRow",
+        "source": "Components.kt",
+        "refersTo": "thread-row",
+        "behavior": "Separate media, discussion, and bookmark actions; two-line title and preview. Home adds a primary-colored, single-line label-small board and relative-age line above the title with 5dp bottom padding."
+      },
+      {
+        "name": "SearchField",
+        "source": "BoardwalkApp.kt",
+        "behavior": "Native outlined single-line input with search icon and conditional clear action; Material large shape."
+      },
+      {
+        "name": "Native buttons",
+        "source": "SettingsScreen.kt",
+        "behavior": "Material Button, OutlinedButton, TextButton and IconButton; native interaction and disabled states."
+      },
+      {
+        "name": "FilterChip",
+        "source": "HomeScreen.kt / BoardwalkApp.kt / SettingsScreen.kt",
+        "behavior": "Native selected state for Home Active/Newest ordering, catalog sorting, Nested/Chronological reply layout, and theme choice."
+      },
+      {
+        "name": "Navigation",
+        "source": "BoardwalkApp.kt",
+        "behavior": "Home, Boards, Saved, Settings; bottom bar or width-dependent rail."
+      },
+      {
+        "name": "MediaViewer",
+        "source": "MediaViewer.kt",
+        "refersTo": "fullscreen-viewer",
+        "behavior": "Fit initially; pinch 1–5x; double-tap 1x/3x; bounded pan; paging only while unzoomed; back preserves reader. White attachment-download action opens a native local-only save picker; inline body-small status and picker errors."
+      },
+      {
+        "name": "Quote dialog",
+        "source": "BoardwalkApp.kt",
+        "behavior": "Native AlertDialog with scrollable reply and optional media."
+      },
+      {
+        "name": "Home timeline",
+        "source": "HomeScreen.kt",
+        "behavior": "Compact favorite-board ThreadRows with board and relative-age labels; Active uses last-modified age and Newest uses creation age. Existing typography, spacing, filter chips, loading rows, and error/empty states are reused."
+      },
+      {
+        "name": "Reply layout",
+        "source": "BoardwalkApp.kt",
+        "behavior": "Native Nested/Chronological filter chips. Nested replies indent 12dp per depth capped at 36dp beyond the base inset; counted Show/Hide controls collapse descendants. Reply-reference text buttons wrap with 4dp gaps and open quote dialogs."
+      },
+      {
+        "name": "Saved offline status",
+        "source": "BoardwalkApp.kt",
+        "behavior": "Rows distinguish saving, discussion available offline, and bookmark-only status; Download discussion appears when missing, with native error text. Offline reader displays saved age and separately loaded media notice."
+      },
+      {
+        "name": "Local backup",
+        "source": "SettingsScreen.kt / LocalDocuments.kt",
+        "behavior": "Native folder and import controls with optional stop-updating action, busy progress, inline results, and restore confirmation. Existing 20dp inset and 8dp spacing. Local-only pickers; two latest completed timestamped JSON files in the chosen folder, no cloud or account; media and proxy passwords excluded."
+      }
+    ],
+    "previewPolicy": "No HTML/CSS component previews or synthetic tonal ramps are supplied: these would be approximations of native Compose, not extracted implementation. Native component inventory is provided instead."
+  },
+  "components": [],
+  "narrative": {
+    "northStar": "Compact reading, full-screen media",
+    "overview": "Boardwalk uses a quiet green native Android interface around dense, readable conversations. Small images share the feed with short text previews; media gets its own black, full-screen surface when opened. This describes the implemented direction, not a new brand identity. Boardwalk remains a provisional name.\n\nThe implementation uses Jetpack Compose Material 3 with explicit light and dark color schemes. Preserve native controls and accessibility semantics. Dimensions below are Android density-independent units (`dp`); text uses inherited, scalable Material typography (`sp`), not CSS pixels.",
+    "keyCharacteristics": [
+      "Compact, flat conversation rows.",
+      "Separate thumbnail and discussion actions.",
+      "Green accents, restrained neutral surfaces, and explicit theme choices.",
+      "Black media viewing with pinch, double-tap, and paging controls."
+    ],
+    "rules": [],
+    "dos": [
+      "**Do** preserve separate thumbnail, discussion, and bookmark targets.",
+      "**Do** use theme roles and verify both light and dark appearance.",
+      "**Do** retain native dp geometry, scalable typography, system insets, and accessible action labels.",
+      "**Do** preserve list position when closing full-screen media."
+    ],
+    "donts": [
+      "**Don't** turn the compact conversation feed into oversized image cards.",
+      "**Don't** page the gallery while a user is panning a zoomed image.",
+      "**Don't** invent web hover treatments, fixed pixel typography, or custom shadows absent from the native app.",
+      "**Don't** imply official 4chan branding or treat the provisional app name as an approved identity."
+    ]
+  }
+}
