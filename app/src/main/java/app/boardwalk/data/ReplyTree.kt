@@ -20,11 +20,14 @@ object ReplyTree {
 
     fun build(posts: List<Post>, board: String, thread: Long): List<ReplyNode> {
         val unique = posts.distinctBy { it.id }
+        val opener = unique.firstOrNull()?.id
         val order = unique.mapIndexed { index, post -> post.id to index }.toMap()
         val refs = unique.associate { it.id to references(it.comment, board, thread) }
         val parents = unique.associate { post ->
             post.id to refs.getValue(post.id).filter { (order[it] ?: Int.MAX_VALUE) < order.getValue(post.id) }
-                .maxByOrNull { order.getValue(it) }
+                .maxByOrNull { order.getValue(it) }.let { quoted ->
+                    quoted ?: opener?.takeIf { it != post.id }
+                }
         }
         val counts = mutableMapOf<Long, Int>()
         unique.asReversed().forEach { post -> parents[post.id]?.let { parent -> counts[parent] = (counts[parent] ?: 0) + 1 + (counts[post.id] ?: 0) } }

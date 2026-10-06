@@ -149,13 +149,13 @@ Search is a single-line `OutlinedTextField` with a search icon and conditional c
 
 ### Chips, switches, and navigation
 
-Native `FilterChip` selects Home Active/Newest ordering, catalog ordering, Nested/Chronological reply layout, or System/Light/Dark appearance. Native switches control the board directory filter and proxy use. Home, Boards, Saved, and Settings are the four navigation destinations. Material selected states communicate current selection. The app bar shows route context, a back action when applicable, and refresh/bookmark actions.
+Native sort menus select Hot, New, or Latest reply on Home and boards. `FilterChip` selects Nested/Chronological reply layout or System/Light/Dark appearance. Native switches control the board directory filter and proxy use. Home, Boards, Saved, and Settings are the four navigation destinations. Material selected states communicate current selection. The app bar shows route context, a back action when applicable, and refresh/bookmark actions.
 
 ### Reader and quote dialog
 
 Comments use body-medium typography with primary-colored links and quote lines. Text spoilers require an explicit reveal action. Tapping an in-thread quote opens an `AlertDialog`; its body scrolls within a 420dp maximum height. Quote media can open the same full-screen viewer.
 
-Thread reading offers Nested and Chronological chips with the existing 20dp horizontal inset and 8dp gap. Nested replies add 12dp leading indentation per depth level, capped at 36dp beyond the base 20dp inset; deeper conversations do not keep narrowing. Reply-reference text buttons wrap in a flow row with 4dp gaps and open the quote dialog. A parent with descendants offers a counted Show/Hide replies text button in Nested mode. Chronological mode removes nesting indentation and collapse controls.
+Thread reading offers Nested and Chronological chips. Nested replies add 16dp leading indentation per depth level, capped at four levels, and a visible connector to their parent. Each reply shows its parent name and excerpt. Unquoted replies attach to the opening post. A parent with descendants offers a counted Show/Hide replies text button. Chronological mode removes nesting indentation and collapse controls. Cross-board quote cards show source board, post text, and media when available; internal links use native navigation.
 
 ### Saved discussions and local backup
 

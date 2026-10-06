@@ -16,7 +16,7 @@ import app.boardwalk.data.*
 
 @Composable
 internal fun HomeScreen(model: ReaderModel) {
-    var order by rememberSaveable { mutableStateOf(FeedOrder.ACTIVE) }
+    var order by rememberSaveable { mutableStateOf(FeedOrder.HOT) }
     val entries = remember(model.home, model.favorites, model.showAll, order) {
         HomeFeed.sorted(model.homeEntries, order)
     }
@@ -26,11 +26,7 @@ internal fun HomeScreen(model: ReaderModel) {
             else "Threads from ${model.homeBoards.size} favorite boards",
             Modifier.padding(horizontal = 20.dp, vertical = 8.dp), style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Row(Modifier.padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FeedOrder.entries.forEach { value ->
-                FilterChip(selected = order == value, onClick = { order = value }, label = { Text(value.label) })
-            }
-        }
+        SortFilter(order) { order = it }
         if (model.homeFailures.isNotEmpty()) {
             Surface(color = MaterialTheme.colorScheme.errorContainer) {
                 Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
@@ -49,13 +45,14 @@ internal fun HomeScreen(model: ReaderModel) {
             }
             items(entries, key = { it.key }) { entry ->
                 val post = entry.post
-                val time = if (order == FeedOrder.ACTIVE) post.lastModified else post.time
+                val time = if (order == FeedOrder.NEWEST) post.time else post.lastReplyTime
                 val age = DateUtils.getRelativeTimeSpanString(time * 1000).toString()
                 ThreadRow(post, entry.board.id, model.network.images, model.isSaved(entry.board.id, post.id),
                     openThread = { model.openHomeThread(entry) },
                     openMedia = { model.openGallery(post, post.id, entry.board) },
                     bookmark = { model.bookmark(entry.board.id, post.id, plain(post.subject).ifBlank { safePreview(post.comment).take(100) }) },
-                    origin = "/${entry.board.id}/ · $age")
+                    origin = "/${entry.board.id}/ · $age",
+                    openLatestReply = { model.openHomeThread(entry); model.openReaderLink(ReaderLink(entry.board.id, post.id, post.lastReply?.id)) })
             }
         }
     }

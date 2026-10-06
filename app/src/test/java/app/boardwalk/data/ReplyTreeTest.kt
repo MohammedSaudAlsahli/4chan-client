@@ -12,9 +12,9 @@ class ReplyTreeTest {
     private fun quote(id: Int) = "<a href=\"#p$id\">&gt;&gt;$id</a>"
     @Test fun nestsRepliesAndCollapsesWholeBranch() {
         val tree = ReplyTree.build(posts("OP", quote(1), quote(2), "Another root", quote(4)), "news", 1)
-        assertEquals(listOf(0, 1, 2, 0, 1), tree.map { it.depth })
-        assertEquals(2, tree.first().descendants)
-        assertEquals(listOf(1L, 4L, 5L), ReplyTree.visible(tree, setOf(1)).map { it.post.id })
+        assertEquals(listOf(0, 1, 2, 1, 2), tree.map { it.depth })
+        assertEquals(4, tree.first().descendants)
+        assertEquals(listOf(1L), ReplyTree.visible(tree, setOf(1)).map { it.post.id })
     }
     @Test fun multipleReferencesNestOnceUnderLatestEarlierPost() {
         val tree = ReplyTree.build(posts("OP", "Second", quote(1) + quote(2)), "biz", 1)
@@ -26,7 +26,7 @@ class ReplyTreeTest {
         val tree = ReplyTree.build(posts(quote(3), quote(2), quote(1) + quote(99)), "biz", 1)
         assertEquals(3, tree.size)
         assertNull(tree.first().parent)
-        assertEquals(listOf(1L, 3L, 2L), tree.map { it.post.id })
+        assertEquals(listOf(1L, 2L, 3L), tree.map { it.post.id })
     }
     @Test fun excludesOtherBoardsThreadsAndExternalLinks() {
         val html = "<a href=\"/news/thread/1#p2\">x</a><a href=\"https://boards.4chan.org/news/thread/1#p3\">x</a>" +

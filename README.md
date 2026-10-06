@@ -5,10 +5,11 @@ A native reader for real 4chan boards, built with Kotlin and Jetpack Compose. Bo
 ## Using the app
 
 - Home combines threads from your favorite boards. Star or unstar boards in Boards to choose what appears. Home respects the work-safe/all-boards setting.
-- Sort Home by **Active** (last thread modification) or **Newest** (thread creation time). Each row shows its board and relative age. Refresh updates the feed; it does not poll in the background.
+- Use the same sort filter on Home and each board: **Hot** weighs reply count against thread age, **New** uses creation time, and **Latest reply** uses the most recent reply time. Rows keep the opening post's title and image, with a tappable latest-reply preview when the API provides one. Refresh updates the feed; it does not poll in the background.
 - Choose a board. Search and sort its compact thread list.
 - Tap a thumbnail to open the full-screen viewer. Pinch or double-tap to zoom; swipe at normal zoom to move between that thread's images. Arrow buttons are also available.
-- Tap the thread text to read the discussion. Use Nested to group quoted replies and collapse branches, or Chronological for posting order. A post quoting several earlier posts nests once under the latest earlier one; every reference remains accessible. Tap a quoted reply to preview it.
+- Tap the thread text to read the discussion. Nested displays the opening post, reply connectors, parent context, and replies below their parent; unquoted replies belong directly under the opening post. Collapse a branch or choose Chronological for posting order. A post quoting several earlier posts nests once under the latest earlier one; every reference remains accessible. Tap a parent reference to preview it.
+- Links to 4chan boards and threads open in Boardwalk with Back returning to the previous place. Cross-board quoted posts show an inline preview and can open the source thread; other web links use the browser.
 - Android Back or the viewer's back button returns to the same browsing position.
 - Star boards and bookmark threads to keep them nearby. Bookmarking also downloads an offline copy of the discussion. Saved shows download status and retry controls. Media is not bundled into that copy; use the viewer download button to save attachments separately.
 - Choose a system, light, or dark theme in Settings. Work-safe boards appear by default; Settings can include all boards.
@@ -49,7 +50,8 @@ The local workspace's `local.properties` is machine-specific and excluded from t
 
 ## Implementation
 
-- `data/ReplyTree.kt`: board-scoped quote references, cycle-safe nesting, and branch collapse.
+- `data/ReplyTree.kt`: board-scoped quote references, cycle-safe nesting under the opening post, and branch collapse.
+- `data/ReaderLinks.kt`: canonical 4chan link parsing for native board and thread navigation.
 - `data/Backup.kt`: versioned local backup format and validation.
 - `data/HomeFeed.kt`: favorite-board selection, cross-board ordering, progressive refresh, partial-failure retention, and board-scoped identity.
 - `ui/HomeScreen.kt`: mixed favorite-board timeline with compact media and discussion actions.

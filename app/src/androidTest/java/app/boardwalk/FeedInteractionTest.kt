@@ -6,6 +6,8 @@ import androidx.test.platform.app.InstrumentationRegistry
 import app.boardwalk.data.*
 import app.boardwalk.ui.BoardwalkTheme
 import app.boardwalk.ui.ThreadRow
+import app.boardwalk.ui.CommentBody
+import app.boardwalk.data.ReaderLink
 import coil.ImageLoader
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -29,5 +31,17 @@ class FeedInteractionTest {
         compose.runOnIdle { assertEquals(1, imagesOpened); assertEquals(0, threadsOpened) }
         compose.onNodeWithText("Papercraft ideas").performClick()
         compose.runOnIdle { assertEquals(1, imagesOpened); assertEquals(1, threadsOpened) }
+    }
+
+    @Test fun crossBoardQuoteDispatchesNativeReaderLink() {
+        var opened: ReaderLink? = null
+        compose.setContent {
+            BoardwalkTheme {
+                CommentBody("""<a href="https://boards.4chan.org/b/thread/42#p43">&gt;&gt;&gt;/b/43</a>""",
+                    onQuote = {}, onReaderLink = { opened = it }, currentBoard = "a", currentThread = 1)
+            }
+        }
+        compose.onNodeWithText(">>>/b/43").performClick()
+        compose.runOnIdle { assertEquals(ReaderLink("b", 42, 43), opened) }
     }
 }

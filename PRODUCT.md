@@ -27,3 +27,7 @@ Home is the starting screen and combines threads from favorite boards. Active us
 ## Local reading and recovery (0.3.0)
 
 Default favorites are news and biz on fresh installs. Nested replies remain switchable to chronological order. Bookmarks download text discussion snapshots; attachments are separate user-selected local files. Local-only backup folders hold the two latest completed JSON files; after reinstall or device change the user imports the newest file. No cloud backup or account. Proxy credentials are excluded. Existing explicit favorite choices are not overwritten.
+
+## Conversation navigation (0.4.0)
+
+Nested discussion uses visible parent connectors. Unquoted replies attach to the opening post. Board and thread links stay in the native reader and preserve Back history. Cross-board quoted posts appear inline with their source text and image when available. Home and board catalogs use a shared Hot, New, and Latest reply filter. Each thread row keeps its opener and offers a separate latest-reply preview.

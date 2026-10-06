@@ -10,8 +10,10 @@ data class Post(
     val extension: String, val filename: String, val spoiler: Boolean,
     val width: Int, val height: Int, val archived: Boolean,
     val lastModified: Long = time,
+    val lastReply: Post? = null,
 ) {
     val hasMedia get() = mediaId != null && extension in setOf(".jpg", ".png", ".gif", ".webm", ".pdf")
+    val lastReplyTime get() = lastReply?.time ?: lastModified
     fun thumbnail(board: String) = mediaId?.let { "https://i.4cdn.org/$board/${it}s.jpg" }
     fun media(board: String) = if (hasMedia) "https://i.4cdn.org/$board/$mediaId$extension" else null
 }
@@ -37,13 +39,17 @@ object ApiParser {
         return (0 until pages.length()).flatMap { posts(pages.getJSONObject(it).getJSONArray("threads")) }
     }
     fun thread(body: String) = posts(JSONObject(body).getJSONArray("posts"))
-    private fun posts(list: JSONArray) = (0 until list.length()).map { i ->
-        val p = list.getJSONObject(i)
-        Post(p.getLong("no"), p.optString("sub"), p.optString("com"), p.optString("name", "Anonymous"),
+    private fun posts(list: JSONArray) = (0 until list.length()).map { i -> post(list.getJSONObject(i)) }
+    private fun post(p: JSONObject): Post {
+        val recent = p.optJSONArray("last_replies")
+        val lastReply = recent?.let { replies ->
+            (0 until replies.length()).map { post(replies.getJSONObject(it)) }.maxByOrNull { it.time }
+        }
+        return Post(p.getLong("no"), p.optString("sub"), p.optString("com"), p.optString("name", "Anonymous"),
             p.optLong("time"), p.optInt("replies"), p.optInt("images"),
             p.optLong("tim").takeIf { it > 0 && p.optInt("filedeleted") != 1 },
             p.optString("ext"), p.optString("filename"), p.optInt("spoiler") == 1,
             p.optInt("w"), p.optInt("h"), p.optInt("archived") == 1,
-            p.optLong("last_modified", p.optLong("time")))
+            p.optLong("last_modified", p.optLong("time")), lastReply)
     }
 }

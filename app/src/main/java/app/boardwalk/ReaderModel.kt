@@ -11,6 +11,8 @@ import android.net.Uri
 
 data class GalleryData(val board: String, val threadId: Long, val posts: List<Post>, val startId: Long,
     val loading: Boolean = false, val error: String? = null)
+private data class ReaderRoute(val section: String, val board: Board?, val threadId: Long?,
+    val catalog: List<Post>, val posts: List<Post>, val offlineSavedAt: Long?)
 
 class ReaderModel(application: android.app.Application) : AndroidViewModel(application) {
     private val app = application as BoardwalkApplication
@@ -27,6 +29,10 @@ class ReaderModel(application: android.app.Application) : AndroidViewModel(appli
     val homeBoards get() = HomeFeed.boards(boards, favorites, showAll)
     val homeEntries get() = home.filter { entry -> homeBoards.any { it.id == entry.board.id } }
     var posts by mutableStateOf<List<Post>>(emptyList()); private set
+    var targetPostId by mutableStateOf<Long?>(null); private set
+    val quotePosts = mutableStateMapOf<String, Post?>()
+    private val quoteLoading = mutableStateMapOf<String, Boolean>()
+    private val routeStack = mutableListOf<ReaderRoute>()
     var loading by mutableStateOf(false); private set
     var error by mutableStateOf<String?>(null); private set
     var gallery by mutableStateOf<GalleryData?>(null); private set
@@ -69,8 +75,9 @@ class ReaderModel(application: android.app.Application) : AndroidViewModel(appli
         }
     }
     fun openHomeThread(entry: FeedThread) {
+        pushRoute()
         board = entry.board; catalog = emptyList()
-        openThread(entry.post.id)
+        showThread(entry.post.id)
     }
     private fun load(block: suspend () -> Unit) {
         loadJob?.cancel()
@@ -83,17 +90,27 @@ class ReaderModel(application: android.app.Application) : AndroidViewModel(appli
     }
     fun loadBoards() = load { boards = network.api.boards() }
     fun openBoard(value: Board) {
+        pushRoute()
         board = value; threadId = null; catalog = emptyList(); posts = emptyList()
+        targetPostId = null
         load { catalog = network.api.catalog(value.id) }
     }
     fun openThread(id: Long) {
+        if (board == null) return
+        pushRoute()
+        showThread(id)
+    }
+    private fun showThread(id: Long, target: Long? = null) {
         val b = board ?: return
         threadId = id; posts = emptyList(); offlineSavedAt = null
+        targetPostId = target
         load { fetchThread(b.id, id) }
     }
     fun openSaved(value: SavedThread) {
+        pushRoute()
         board = boards.find { it.id == value.board } ?: Board(value.board, value.board, false)
         threadId = value.id; posts = emptyList(); offlineSavedAt = null
+        targetPostId = null
         load {
             val copy = withContext(Dispatchers.IO) { store.offline(value.board, value.id) }
             if (copy != null) { posts = copy.posts; offlineSavedAt = copy.savedAt }
@@ -116,19 +133,45 @@ class ReaderModel(application: android.app.Application) : AndroidViewModel(appli
     }
     fun switchSection(value: String) {
         closeGallery(); loadJob?.cancel(); loading = false; error = null
+        routeStack.clear(); targetPostId = null
         section = value; board = null; threadId = null
         if (value == "Home") loadHome()
         else if (value == "Boards" && boards.isEmpty()) loadBoards()
     }
     fun back() {
-        when {
-            gallery != null -> closeGallery()
-            threadId != null -> {
-                loadJob?.cancel(); loading = false; error = null; threadId = null
-                if (section == "Saved" || section == "Home") board = null
-                else if (catalog.isEmpty()) board?.let { b -> load { catalog = network.api.catalog(b.id) } }
-            }
-            board != null -> { loadJob?.cancel(); loading = false; error = null; board = null }
+        if (gallery != null) { closeGallery(); return }
+        loadJob?.cancel(); loading = false; error = null; targetPostId = null
+        val route = routeStack.removeLastOrNull()
+        if (route != null) {
+            section = route.section; board = route.board; threadId = route.threadId
+            catalog = route.catalog; posts = route.posts; offlineSavedAt = route.offlineSavedAt
+        } else { threadId = null; board = null }
+    }
+    private fun pushRoute() { routeStack += ReaderRoute(section, board, threadId, catalog, posts, offlineSavedAt) }
+    fun consumeTargetPost() { targetPostId = null }
+    fun openReaderLink(link: ReaderLink) {
+        if (board?.id == link.board && threadId == link.thread) {
+            targetPostId = link.post
+            return
+        }
+        val nextBoard = boards.find { it.id == link.board } ?: Board(link.board, "/${link.board}/", false)
+        if (link.thread == null) openBoard(nextBoard)
+        else {
+            pushRoute(); board = nextBoard; catalog = emptyList()
+            showThread(link.thread, link.post)
+        }
+    }
+    fun loadQuote(link: ReaderLink) {
+        val thread = link.thread ?: return
+        val post = link.post ?: return
+        val key = "${link.board}:$thread:$post"
+        if (key in quotePosts || quoteLoading[key] == true) return
+        quoteLoading[key] = true
+        viewModelScope.launch {
+            try { quotePosts[key] = network.api.thread(link.board, thread).find { it.id == post } }
+            catch (e: CancellationException) { throw e }
+            catch (_: Exception) { quotePosts[key] = null }
+            finally { quoteLoading.remove(key) }
         }
     }
     fun refresh() {

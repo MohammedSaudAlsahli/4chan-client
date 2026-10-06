@@ -22,11 +22,11 @@ class HomeFeedTest {
     @Test fun sortsAcrossBoardsByTimeNotBoardLocalPostNumber() {
         val entries = listOf(FeedThread(g, post(90000, 100, 500)), FeedThread(po, post(4, 200, 300)))
         assertEquals(listOf("po:4", "g:90000"), HomeFeed.sorted(entries, FeedOrder.NEWEST).map { it.key })
-        assertEquals(listOf("g:90000", "po:4"), HomeFeed.sorted(entries, FeedOrder.ACTIVE).map { it.key })
+        assertEquals(listOf("g:90000", "po:4"), HomeFeed.sorted(entries, FeedOrder.LATEST_REPLY).map { it.key })
     }
     @Test fun equalPostNumbersOnDifferentBoardsAreDistinct() {
         val entries = listOf(FeedThread(po, post(1, 100)), FeedThread(g, post(1, 100)))
-        assertEquals(listOf("g:1", "po:1"), HomeFeed.sorted(entries + entries, FeedOrder.ACTIVE).map { it.key })
+        assertEquals(listOf("g:1", "po:1"), HomeFeed.sorted(entries + entries, FeedOrder.LATEST_REPLY).map { it.key })
     }
     @Test fun boardRefreshRemovesExpiredThreadsAndPreservesOtherBoards() {
         val entries = listOf(FeedThread(g, post(1, 100)), FeedThread(po, post(1, 200)))
@@ -56,5 +56,15 @@ class HomeFeedTest {
     @Test fun missingLastModifiedFallsBackToCreationTime() {
         val post = ApiParser.catalog("""[{"threads":[{"no":1,"time":123}]}]""").single()
         assertEquals(123L, post.lastModified)
+    }
+    @Test fun latestReplyUsesCatalogReplyAndHotWeightsActivityAgainstAge() {
+        val catalog = ApiParser.catalog("""[{"threads":[
+            {"no":1,"time":1000,"replies":2,"last_modified":9000,"last_replies":[{"no":11,"time":3000,"com":"older"},{"no":12,"time":4000,"com":"newer"}]},
+            {"no":2,"time":3500,"replies":50,"last_modified":3600,"last_replies":[{"no":21,"time":3600}]}
+        ]}]""")
+        assertEquals(12L, catalog.first().lastReply?.id)
+        assertEquals("newer", catalog.first().lastReply?.comment)
+        assertEquals(listOf(1L, 2L), HomeFeed.sortedBoard(catalog, FeedOrder.LATEST_REPLY).map { it.id })
+        assertEquals(listOf(2L, 1L), HomeFeed.sortedBoard(catalog, FeedOrder.HOT, now = 5000).map { it.id })
     }
 }

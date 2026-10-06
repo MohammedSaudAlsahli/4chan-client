@@ -26,6 +26,9 @@ import androidx.compose.ui.text.*
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.boardwalk.data.Post
+import app.boardwalk.data.FeedOrder
+import app.boardwalk.data.ReaderLink
+import app.boardwalk.data.ReaderLinks
 import coil.ImageLoader
 import coil.compose.SubcomposeAsyncImage
 
@@ -64,7 +67,8 @@ fun MediaThumbnail(post: Post, board: String, images: ImageLoader, onClick: () -
 
 @Composable
 fun ThreadRow(post: Post, board: String, images: ImageLoader, saved: Boolean,
-    openThread: () -> Unit, openMedia: () -> Unit, bookmark: () -> Unit, origin: String? = null) {
+    openThread: () -> Unit, openMedia: () -> Unit, bookmark: () -> Unit, origin: String? = null,
+    openLatestReply: (() -> Unit)? = null) {
     Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 14.dp, bottom = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Top) {
         if (post.hasMedia) MediaThumbnail(post, board, images, openMedia)
@@ -81,6 +85,16 @@ fun ThreadRow(post: Post, board: String, images: ImageLoader, saved: Boolean,
                 Text("${post.replies} replies", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (post.images > 0) Text("· ${post.images} images", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            post.lastReply?.let { reply ->
+                Surface(Modifier.fillMaxWidth().padding(top = 10.dp).clickable { (openLatestReply ?: openThread)() },
+                    shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.surfaceContainerLow) {
+                    Column(Modifier.padding(10.dp)) {
+                        Text("Latest reply · #${reply.id}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        Text(safePreview(reply.comment).ifBlank { if (reply.hasMedia) "Attachment" else "Open reply" },
+                            style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            }
         }
         IconButton(onClick = bookmark, modifier = Modifier.size(48.dp)) {
             Icon(if (saved) Icons.Outlined.BookmarkAdded else Icons.Outlined.BookmarkBorder,
@@ -91,7 +105,8 @@ fun ThreadRow(post: Post, board: String, images: ImageLoader, saved: Boolean,
 }
 
 @Composable
-fun CommentBody(html: String, onQuote: (Long) -> Unit) {
+fun CommentBody(html: String, onQuote: (Long) -> Unit, onReaderLink: ((ReaderLink) -> Unit)? = null,
+    currentBoard: String? = null, currentThread: Long? = null) {
     var reveal by remember(html) { mutableStateOf(false) }
     val spoiler = remember(html) { Regex("<s(?:\\s[^>]*)?>.*?</s>", RegexOption.DOT_MATCHES_ALL) }
     val context = LocalContext.current
@@ -117,11 +132,31 @@ fun CommentBody(html: String, onQuote: (Long) -> Unit) {
     ClickableText(text, style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface), onClick = { offset ->
         text.getStringAnnotations("link", offset, offset).firstOrNull()?.item?.let { link ->
             val id = Regex("^#p(\\d+)$").find(link)?.groupValues?.get(1)?.toLongOrNull()
-            if (id != null) onQuote(id)
+            val reader = ReaderLinks.parse(link, currentBoard, currentThread)
+            if (reader != null && onReaderLink != null) onReaderLink(reader)
+            else if (id != null) onQuote(id)
             else context.openWebsite(when { link.startsWith("//") -> "https:$link"; link.startsWith("/") -> "https://boards.4chan.org$link"; else -> link })
         }
     })
     if (spoiler.containsMatchIn(html)) TextButton(onClick = { reveal = !reveal }) { Text(if (reveal) "Hide spoilers" else "Reveal spoilers") }
+}
+
+@Composable
+fun SortFilter(selected: FeedOrder, onSelect: (FeedOrder) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box(Modifier.padding(horizontal = 20.dp, vertical = 4.dp)) {
+        OutlinedButton(onClick = { expanded = true }) {
+            Icon(Icons.Outlined.Tune, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Sort: ${selected.label}")
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            FeedOrder.entries.forEach { order ->
+                DropdownMenuItem(text = { Text(order.label) }, onClick = { onSelect(order); expanded = false },
+                    leadingIcon = { if (order == selected) Icon(Icons.Outlined.Check, null) })
+            }
+        }
+    }
 }
 
 @Composable

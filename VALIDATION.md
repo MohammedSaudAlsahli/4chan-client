@@ -1,5 +1,15 @@
 # Development build validation
 
+## Version 0.4.0 — Thread hierarchy, native links, and sorting
+
+Validated October 6, 2026. All 33 JVM tests, debug APK build, APK v2 signature verification, and Android lint pass. On the Android 15 AOSP ATD emulator, the offline nested-thread UI test, independent image/discussion tap test, and native cross-board link tap test pass. The thread screenshot was reviewed with emulator rendering enabled: the opening post, parent labels, reply lines, and two-level indentation remain readable on a phone screen. Parser tests cover cross-board/board-only links, external-host rejection, last-reply extraction, and Hot/New/Latest reply ordering. The quoted-post card and cross-board navigation use the same API and proxy client as normal thread browsing, but a live cross-board link was not exercised on a physical device. The debug APK is a test build; release signing and real-device testing remain before a GitHub Release.
+
+APK: `Boardwalk-0.4.0-debug.apk`
+
+SHA-256: `54cbb0993a733af1867c45c1873d13f181eaf0c95c6a06bfaf07dbb1e98a2eb8`
+
+The Gradle `connectedDebugAndroidTest --offline` task could not resolve an uncached Android test-platform host artifact. The compiled app and test APKs were installed with `adb`, and the three relevant instrumentation tests were run directly with `am instrument`.
+
 ## Version 0.3.0 — Nested replies and local recovery
 
 Validated October 5, 2026. Debug build and lint pass; all 29 JVM tests pass (including 5 reply-tree and 6 backup tests). Five Android emulator tests pass: independent image/discussion taps, live proxy/feed/media regression, exported-state restoration into fresh storage, interrupted-restore journal recovery, and offline/nested UI behavior. A final focused recovery rerun covers AtomicFile backup revision reads.

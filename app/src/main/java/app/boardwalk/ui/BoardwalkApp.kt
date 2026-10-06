@@ -3,6 +3,7 @@ package app.boardwalk.ui
 import android.text.format.DateUtils
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.geometry.Offset
 import androidx.core.view.WindowCompat
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -177,23 +179,22 @@ private fun BoardRow(board: Board, model: ReaderModel) {
 @Composable
 private fun CatalogScreen(model: ReaderModel, board: Board) {
     var query by rememberSaveable { mutableStateOf("") }
-    var sort by rememberSaveable { mutableStateOf("Active") }
+    var sort by rememberSaveable { mutableStateOf(FeedOrder.HOT) }
     val list = remember(model.catalog, query, sort) {
         val filtered = model.catalog.filter { query.isBlank() || "${plain(it.subject)} ${safePreview(it.comment)}".contains(query, true) }
-        when (sort) { "New" -> filtered.sortedByDescending { it.id }; "Replies" -> filtered.sortedByDescending { it.replies }; else -> filtered }
+        HomeFeed.sortedBoard(filtered, sort)
     }
     Column {
         SearchField(query, { query = it }, "Search this board")
-        Row(Modifier.padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("Active", "New", "Replies").forEach { value -> FilterChip(selected = value == sort, onClick = { sort = value }, label = { Text(value) }) }
-        }
+        SortFilter(sort) { sort = it }
         if (model.loading && model.catalog.isEmpty()) { LoadingRows(); return }
         LazyColumn(state = rememberLazyListState(), modifier = Modifier.testTag("catalog-list")) {
             if (list.isEmpty()) item { EmptyMessage("No threads found", "Try another search or refresh the board.") }
             items(list, key = { it.id }) { post ->
                 ThreadRow(post, board.id, model.network.images, model.isSaved(board.id, post.id),
                     openThread = { model.openThread(post.id) }, openMedia = { model.openGallery(post, post.id) },
-                    bookmark = { model.bookmark(board.id, post.id, plain(post.subject).ifBlank { safePreview(post.comment).take(100) }) })
+                    bookmark = { model.bookmark(board.id, post.id, plain(post.subject).ifBlank { safePreview(post.comment).take(100) }) },
+                    openLatestReply = { model.openThread(post.id); model.openReaderLink(ReaderLink(board.id, post.id, post.lastReply?.id)) })
             }
         }
     }
@@ -213,6 +214,14 @@ private fun ThreadScreen(model: ReaderModel, board: Board, id: Long) {
     val rows = remember(tree, nested, collapsed) {
         if (nested) ReplyTree.visible(tree, collapsed.toSet())
         else model.posts.map { ReplyNode(it, null, 0, 0, ReplyTree.references(it.comment, board.id, id)) }
+    }
+    LaunchedEffect(model.targetPostId, rows) {
+        val target = model.targetPostId ?: return@LaunchedEffect
+        val index = rows.indexOfFirst { it.post.id == target }
+        if (index >= 0) {
+            state.animateScrollToItem(index + 2 + if (model.offlineSavedAt != null) 1 else 0)
+            model.consumeTargetPost()
+        } else if (nested && collapsed.isNotEmpty()) collapsed = emptyList()
     }
     LaunchedEffect(state) {
         snapshotFlow { ReadPosition(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset) }
@@ -243,24 +252,44 @@ private fun ThreadScreen(model: ReaderModel, board: Board, id: Long) {
         }
         items(rows, key = { it.post.id }) { node ->
             val post = node.post
-            Column(Modifier.fillMaxWidth().padding(start = 20.dp + (node.depth.coerceAtMost(3) * 12).dp, end = 20.dp, top = 20.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            val indent = node.depth.coerceAtMost(4) * 16
+            val lineColor = MaterialTheme.colorScheme.outlineVariant
+            Box(Modifier.fillMaxWidth()) {
+                if (nested && node.parent != null) Canvas(Modifier.matchParentSize()) {
+                    val x = (22 + indent - 9).dp.toPx()
+                    drawLine(lineColor, Offset(x, 0f), Offset(x, size.height), strokeWidth = 2.dp.toPx())
+                    drawLine(lineColor, Offset(x, 39.dp.toPx()), Offset(x + 9.dp.toPx(), 39.dp.toPx()), strokeWidth = 2.dp.toPx())
+                }
+            Column(Modifier.fillMaxWidth().padding(start = (20 + indent).dp, end = 20.dp, top = 20.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(plain(post.name).ifBlank { "Anonymous" }, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text("#${post.id}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                if (node.references.isNotEmpty()) {
+                if (nested && node.parent != null) {
+                    val parent = model.posts.find { it.id == node.parent }
+                    TextButton(onClick = { quoted = node.parent }) {
+                        Text("↳ To #${node.parent} · ${parent?.let { plain(it.name).ifBlank { "Anonymous" } } ?: "post"}: ${parent?.let { safePreview(it.comment).take(65) }.orEmpty()}",
+                            maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall)
+                    }
+                } else if (node.references.isNotEmpty()) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         node.references.forEach { ref -> TextButton(onClick = { quoted = ref }) { Text("Reply to #$ref", style = MaterialTheme.typography.labelSmall) } }
                     }
                 }
                 if (post.hasMedia) MediaThumbnail(post, board.id, model.network.images, { model.openGallery(post, id) })
-                if (post.comment.isNotBlank()) CommentBody(post.comment) { quoted = it }
+                if (post.comment.isNotBlank()) CommentBody(post.comment, { quoted = it }, model::openReaderLink, board.id, id)
+                ReaderLinks.links(post.comment, board.id, id)
+                    .filter { it.thread != null && it.post != null && (it.board != board.id || it.thread != id) }
+                    .take(3).forEach { link ->
+                    QuotedPostCard(model, link)
+                }
                 Text(DateUtils.getRelativeTimeSpanString(post.time * 1000).toString(), style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (nested && node.descendants > 0) TextButton(onClick = {
                     collapsed = if (post.id in collapsed) collapsed - post.id else collapsed + post.id
                 }) { Text("${if (post.id in collapsed) "Show" else "Hide"} ${node.descendants} replies") }
+            }
             }
             HorizontalDivider(Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .55f))
         }
@@ -279,10 +308,34 @@ private fun ThreadScreen(model: ReaderModel, board: Board, id: Long) {
                 else {
                     if (post.hasMedia) MediaThumbnail(post, board.id, model.network.images, { quoted = null; model.openGallery(post, id) })
                     Spacer(Modifier.height(12.dp))
-                    CommentBody(post.comment) { quoted = it }
+                    CommentBody(post.comment, { quoted = it }, { link -> quoted = null; model.openReaderLink(link) }, board.id, id)
                 }
             }
         }, confirmButton = { TextButton(onClick = { quoted = null }) { Text("Close") } })
+    }
+}
+
+@Composable
+private fun QuotedPostCard(model: ReaderModel, link: ReaderLink) {
+    val key = "${link.board}:${link.thread}:${link.post}"
+    LaunchedEffect(key) { model.loadQuote(link) }
+    val quoted = model.quotePosts[key]
+    Surface(Modifier.fillMaxWidth().clickable { model.openReaderLink(link) },
+        shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerLow,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Quoted from /${link.board}/${link.thread?.let { " · #$it" }.orEmpty()}",
+                style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+            if (quoted != null) {
+                if (quoted.subject.isNotBlank()) Text(plain(quoted.subject), style = MaterialTheme.typography.titleSmall,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (quoted.hasMedia && link.thread != null) MediaThumbnail(quoted, link.board, model.network.images,
+                    { model.openGallery(quoted, link.thread, Board(link.board, "/${link.board}/", false)) })
+                Text(safePreview(quoted.comment).ifBlank { "Open quoted post" }, style = MaterialTheme.typography.bodySmall,
+                    maxLines = 3, overflow = TextOverflow.Ellipsis)
+            } else Text(if (model.quotePosts.containsKey(key)) "Quoted post unavailable · open source" else "Loading quoted post…",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 

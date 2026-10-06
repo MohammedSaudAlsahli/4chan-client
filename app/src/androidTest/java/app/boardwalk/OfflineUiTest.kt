@@ -34,16 +34,16 @@ class OfflineUiTest {
         compose.setContent { BoardwalkApp(model) }
         compose.onNodeWithText("Available offline · discussion only").assertExists()
         compose.onNodeWithText("Offline reply test").performClick()
-        compose.waitUntil(10_000) { compose.onAllNodesWithText("Hide 2 replies").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("Hide 2 replies").performClick()
-        compose.onNodeWithText("Show 2 replies").assertExists()
-        compose.onNodeWithText("Reply to #1").assertDoesNotExist()
-        compose.onNodeWithText("Show 2 replies").performClick()
-        compose.onNodeWithText("Reply to #1").assertExists()
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Hide 3 replies").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Hide 3 replies").performClick()
+        compose.onNodeWithText("Show 3 replies").assertExists()
+        compose.onNodeWithText("↳ To #1", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Show 3 replies").performClick()
+        assertTrue(compose.onAllNodesWithText("↳ To #1", substring = true).fetchSemanticsNodes().isNotEmpty())
         val dir = File(app.getExternalFilesDir(null), "screenshots").apply { mkdirs() }
         File(dir, "nested-replies.png").outputStream().use { InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot().compress(Bitmap.CompressFormat.PNG, 100, it) }
         compose.onNodeWithText("Chronological").performClick()
-        compose.onNodeWithText("Hide 2 replies").assertDoesNotExist()
+        compose.onNodeWithText("Hide 3 replies").assertDoesNotExist()
         compose.onNodeWithContentDescription("Go back").performClick()
         compose.onNodeWithText("Settings").performClick()
         compose.onNodeWithText("Choose local backup folder").performScrollTo().assertExists()
