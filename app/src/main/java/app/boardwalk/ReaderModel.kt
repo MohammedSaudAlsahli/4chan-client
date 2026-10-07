@@ -24,6 +24,7 @@ class ReaderModel(application: android.app.Application) : AndroidViewModel(appli
     var boards by mutableStateOf<List<Board>>(emptyList()); private set
     var catalog by mutableStateOf<List<Post>>(emptyList()); private set
     var home by mutableStateOf<List<FeedThread>>(emptyList()); private set
+    var popular by mutableStateOf<List<FeedThread>>(emptyList()); private set
     var homeFailures by mutableStateOf<List<String>>(emptyList()); private set
     var homeProgress by mutableStateOf(0); private set
     val homeBoards get() = HomeFeed.boards(boards, favorites, showAll)
@@ -72,6 +73,10 @@ class ReaderModel(application: android.app.Application) : AndroidViewModel(appli
         // Shared ApiGate serializes these requests with reader/media requests.
         HomeFeed.refresh(home, selected, { network.api.catalog(it.id) }) { state ->
             home = state.entries; homeFailures = state.failures; homeProgress = state.completed
+        }
+        val sampled = PopularFeed.sampleBoards(boards, showAll, selected.map { it.id }.toSet())
+        PopularFeed.refresh(home, sampled, { network.api.catalog(it.id) }) { entries ->
+            popular = PopularFeed.ranked(entries)
         }
     }
     fun openHomeThread(entry: FeedThread) {
@@ -299,7 +304,8 @@ class ReaderModel(application: android.app.Application) : AndroidViewModel(appli
                 favorites = store.favorites; saved = store.saved; theme = store.theme; showAll = store.showAll
                 replyLayout = store.replyLayout; offlineKeys = store.offlineKeys(); offlineErrors = emptyMap()
                 proxy = store.proxy(); network.close(); network = NetworkBundle(app, proxy, app.gate)
-                boards = emptyList(); catalog = emptyList(); posts = emptyList(); home = emptyList(); homeFailures = emptyList()
+                boards = emptyList(); catalog = emptyList(); posts = emptyList(); home = emptyList(); popular = emptyList()
+                homeFailures = emptyList()
                 restoreGeneration++
                 backupConnected = false; error = null; loading = false
                 backupMessage = "Restored ${saved.size} bookmarks and ${offlineKeys.size} offline discussions. Re-enter proxy credentials if needed. Choose a backup folder to resume automatic local updates."

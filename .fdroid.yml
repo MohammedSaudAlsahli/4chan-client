@@ -1,0 +1,21 @@
+Categories:
+  - Internet
+License: GPL-3.0-only
+AntiFeatures:
+  NonFreeNet:
+    en-US: Content comes from 4chan, a third-party network service.
+SourceCode: https://github.com/MohammedSaudAlsahli/4chan-client
+IssueTracker: https://github.com/MohammedSaudAlsahli/4chan-client/issues
+Changelog: https://github.com/MohammedSaudAlsahli/4chan-client/releases
+RepoType: git
+Repo: https://github.com/MohammedSaudAlsahli/4chan-client.git
+Builds:
+  - versionName: 0.5.0
+    versionCode: 5
+    commit: v0.5.0
+    gradle:
+      - yes
+AutoUpdateMode: Version v%v
+UpdateCheckMode: Tags
+CurrentVersion: 0.5.0
+CurrentVersionCode: 5

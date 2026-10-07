@@ -7,6 +7,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.*
@@ -23,6 +26,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.animate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -77,11 +81,24 @@ fun MediaViewer(gallery: GalleryData, network: NetworkBundle, close: () -> Unit,
     }
     val pager = rememberPagerState(initialPage = gallery.posts.indexOfFirst { it.id == gallery.startId }.coerceAtLeast(0)) { gallery.posts.size }
     var zoomed by remember { mutableStateOf(false) }
+    var dragY by remember { mutableFloatStateOf(0f) }
+    var viewerHeight by remember { mutableIntStateOf(1) }
     val scope = rememberCoroutineScope()
-    LaunchedEffect(pager.currentPage) { zoomed = false }
-    Box(Modifier.fillMaxSize().background(Color.Black).pointerInput(Unit) { detectTapGestures(onTap = {}) }
+    LaunchedEffect(pager.currentPage) { zoomed = false; dragY = 0f }
+    val dismissDrag = rememberDraggableState { delta -> dragY = (dragY + delta).coerceAtLeast(0f) }
+    Box(Modifier.fillMaxSize().onSizeChanged { viewerHeight = it.height }
+        .background(Color.Black.copy(alpha = (1f - dragY / viewerHeight.coerceAtLeast(1) * .8f).coerceIn(.2f, 1f)))
+        .pointerInput(Unit) { detectTapGestures(onTap = {}) }
         .semantics { contentDescription = "Full-screen media viewer" }) {
-        Column(Modifier.fillMaxSize().systemBarsPadding()) {
+        Column(Modifier.fillMaxSize().graphicsLayer {
+            translationY = dragY
+            val shrink = (1f - dragY / viewerHeight.coerceAtLeast(1) * .15f).coerceIn(.85f, 1f)
+            scaleX = shrink; scaleY = shrink
+        }.draggable(dismissDrag, orientation = Orientation.Vertical, enabled = !zoomed,
+            onDragStopped = { velocity ->
+                if (dragY > viewerHeight * .16f || velocity > 1400f) close()
+                else animate(dragY, 0f) { value, _ -> dragY = value }
+            }).systemBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = close) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Close image viewer", tint = Color.White) }
                 Column(Modifier.weight(1f)) {
@@ -123,7 +140,7 @@ fun MediaViewer(gallery: GalleryData, network: NetworkBundle, close: () -> Unit,
                     Text(gallery.posts.getOrNull(pager.currentPage)?.filename.orEmpty(), color = Color.White,
                         style = MaterialTheme.typography.bodySmall, maxLines = 1)
                     Text(when (gallery.posts.getOrNull(pager.currentPage)?.extension) {
-                        ".webm" -> "Tap play to watch"; ".pdf" -> "Open the attachment in your browser"; else -> "Pinch or double-tap to zoom"
+                        ".webm" -> "Swipe down to close"; ".pdf" -> "Open the attachment in your browser"; else -> "Pinch to zoom · swipe down to close"
                     }, color = Color(0xFFC9CFC9), style = MaterialTheme.typography.labelSmall)
                 }
                 IconButton(enabled = pager.currentPage < gallery.posts.lastIndex, onClick = { scope.launch { pager.animateScrollToPage(pager.currentPage + 1) } }) {

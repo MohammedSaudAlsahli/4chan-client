@@ -1,5 +1,13 @@
 # Development build validation
 
+## Version 0.5.0 — Reader polish and F-Droid preparation
+
+Validated October 8, 2026. All 36 JVM tests, Android lint, debug APK, and instrumentation APK build pass. Three focused Android 15 emulator UI tests pass. A live emulator session loaded Popular Threads and grouped Boards, opened a thread with nested reply cards and quoted-post preview, opened the original image, and returned to the thread via a downward swipe. The live Home feed uses a sampled Boardwalk ranking; it is not the 4chan homepage ranking. The final `.fdroid.yml` parses as YAML and matches version code 5. Store screenshots were captured from the live emulator.
+
+Debug APK SHA-256: `ac4ef0198b03dbc82fe7872b3f075d54e87a6840f1672dd2aa8a7be3b54168a7`
+
+The emulator image lacks a DocumentsUI picker, so physical-device backup import/export and attachment download remain unverified. No release-signed APK has been produced. F-Droid review and publishing remain external steps; a listing should not be claimed before its metadata is accepted and built.
+
 ## Version 0.4.0 — Thread hierarchy, native links, and sorting
 
 Validated October 6, 2026. All 33 JVM tests, debug APK build, APK v2 signature verification, and Android lint pass. On the Android 15 AOSP ATD emulator, the offline nested-thread UI test, independent image/discussion tap test, and native cross-board link tap test pass. The thread screenshot was reviewed with emulator rendering enabled: the opening post, parent labels, reply lines, and two-level indentation remain readable on a phone screen. Parser tests cover cross-board/board-only links, external-host rejection, last-reply extraction, and Hot/New/Latest reply ordering. The quoted-post card and cross-board navigation use the same API and proxy client as normal thread browsing, but a live cross-board link was not exercised on a physical device. The debug APK is a test build; release signing and real-device testing remain before a GitHub Release.

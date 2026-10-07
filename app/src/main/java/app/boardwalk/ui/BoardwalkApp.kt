@@ -4,6 +4,7 @@ import android.text.format.DateUtils
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,8 +13,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Reply
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
@@ -28,6 +31,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.RoundedCornerShape
 import app.boardwalk.ReaderModel
 import app.boardwalk.data.*
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -88,7 +92,7 @@ fun BoardwalkApp(model: ReaderModel) {
                     Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.TopCenter) {
                         holder.SaveableStateProvider("${model.restoreGeneration}:$route") {
                             Column(Modifier.widthIn(max = 760.dp).fillMaxWidth()) {
-                                val hasContent = when { id != null -> model.posts.isNotEmpty(); board != null -> model.catalog.isNotEmpty(); model.section == "Home" -> model.homeEntries.isNotEmpty(); else -> model.boards.isNotEmpty() }
+                                val hasContent = when { id != null -> model.posts.isNotEmpty(); board != null -> model.catalog.isNotEmpty(); model.section == "Home" -> model.homeEntries.isNotEmpty() || model.popular.isNotEmpty(); else -> model.boards.isNotEmpty() }
                                 if (model.loading && hasContent) LinearProgressIndicator(Modifier.fillMaxWidth())
                                 if (model.error != null && hasContent && model.section != "Settings") {
                                     Surface(color = MaterialTheme.colorScheme.errorContainer) {
@@ -138,7 +142,7 @@ private fun BoardsScreen(model: ReaderModel) {
     if (model.loading && model.boards.isEmpty()) { LoadingRows(); return }
     val boards = model.boards.filter { (model.showAll || it.workSafe) && (query.isBlank() || "${it.id} ${it.title}".contains(query, true)) }
     val favorites = boards.filter { it.id in model.favorites }
-    val others = boards.filter { it.id !in model.favorites }
+    val groups = BoardCategories.group(boards)
     LazyColumn {
         item {
             Text("Find your corner.", Modifier.padding(start = 20.dp, top = 8.dp), style = MaterialTheme.typography.headlineSmall)
@@ -150,9 +154,15 @@ private fun BoardsScreen(model: ReaderModel) {
             item { SectionLabel("Your boards") }
             items(favorites, key = { it.id }) { BoardRow(it, model) }
         }
-        if (others.isNotEmpty()) {
-            item { SectionLabel(if (model.showAll) "All boards" else "Work-safe boards") }
-            items(others, key = { it.id }) { BoardRow(it, model) }
+        groups.forEach { group ->
+            item(key = "group:${group.name}") {
+                Row(Modifier.fillMaxWidth().padding(end = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.weight(1f)) { SectionLabel(group.name) }
+                    Text("${group.boards.size}", style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            items(group.boards, key = { "${group.name}:${it.id}" }) { BoardRow(it, model) }
         }
         if (boards.isEmpty()) item { EmptyMessage("No boards found", "Try a different name, or change which boards appear in Settings.") }
         item {
@@ -176,6 +186,7 @@ private fun BoardRow(board: Board, model: ReaderModel) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CatalogScreen(model: ReaderModel, board: Board) {
     var query by rememberSaveable { mutableStateOf("") }
@@ -188,7 +199,8 @@ private fun CatalogScreen(model: ReaderModel, board: Board) {
         SearchField(query, { query = it }, "Search this board")
         SortFilter(sort) { sort = it }
         if (model.loading && model.catalog.isEmpty()) { LoadingRows(); return }
-        LazyColumn(state = rememberLazyListState(), modifier = Modifier.testTag("catalog-list")) {
+        PullToRefreshBox(isRefreshing = model.loading, onRefresh = model::refresh, modifier = Modifier.weight(1f)) {
+        LazyColumn(state = rememberLazyListState(), modifier = Modifier.fillMaxSize().testTag("catalog-list")) {
             if (list.isEmpty()) item { EmptyMessage("No threads found", "Try another search or refresh the board.") }
             items(list, key = { it.id }) { post ->
                 ThreadRow(post, board.id, model.network.images, model.isSaved(board.id, post.id),
@@ -197,10 +209,11 @@ private fun CatalogScreen(model: ReaderModel, board: Board) {
                     openLatestReply = { model.openThread(post.id); model.openReaderLink(ReaderLink(board.id, post.id, post.lastReply?.id)) })
             }
         }
+        }
     }
 }
 
-@OptIn(kotlinx.coroutines.FlowPreview::class, ExperimentalLayoutApi::class)
+@OptIn(kotlinx.coroutines.FlowPreview::class, ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun ThreadScreen(model: ReaderModel, board: Board, id: Long) {
     if (model.loading && model.posts.isEmpty()) { LoadingRows(); return }
@@ -215,6 +228,13 @@ private fun ThreadScreen(model: ReaderModel, board: Board, id: Long) {
         if (nested) ReplyTree.visible(tree, collapsed.toSet())
         else model.posts.map { ReplyNode(it, null, 0, 0, ReplyTree.references(it.comment, board.id, id)) }
     }
+    val byId = remember(tree) { tree.associateBy { it.post.id } }
+    val paths = remember(rows, byId) { rows.map { node ->
+        val path = mutableListOf<Long>()
+        var current: ReplyNode? = node
+        while (current != null) { path += current.post.id; current = current.parent?.let(byId::get) }
+        path.asReversed()
+    } }
     LaunchedEffect(model.targetPostId, rows) {
         val target = model.targetPostId ?: return@LaunchedEffect
         val index = rows.indexOfFirst { it.post.id == target }
@@ -230,7 +250,8 @@ private fun ThreadScreen(model: ReaderModel, board: Board, id: Long) {
     DisposableEffect(state) { onDispose {
         model.store.rememberPosition(board.id, id, ReadPosition(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset))
     } }
-    LazyColumn(state = state) {
+    PullToRefreshBox(isRefreshing = model.loading, onRefresh = model::refresh) {
+    LazyColumn(state = state, modifier = Modifier.fillMaxSize()) {
         item(key = "heading") {
             val first = model.posts.firstOrNull()
             if (first?.subject?.isNotBlank() == true) Text(plain(first.subject), Modifier.padding(horizontal = 20.dp, vertical = 12.dp), style = MaterialTheme.typography.headlineSmall)
@@ -250,27 +271,49 @@ private fun ThreadScreen(model: ReaderModel, board: Board, id: Long) {
                 }
             }
         }
-        items(rows, key = { it.post.id }) { node ->
+        items(rows.size, key = { rows[it].post.id }) { index ->
+            val node = rows[index]
             val post = node.post
             val indent = node.depth.coerceAtMost(4) * 16
             val lineColor = MaterialTheme.colorScheme.outlineVariant
+            val path = paths[index]
+            val nextPath = paths.getOrNull(index + 1).orEmpty()
             Box(Modifier.fillMaxWidth()) {
-                if (nested && node.parent != null) Canvas(Modifier.matchParentSize()) {
-                    val x = (22 + indent - 9).dp.toPx()
-                    drawLine(lineColor, Offset(x, 0f), Offset(x, size.height), strokeWidth = 2.dp.toPx())
-                    drawLine(lineColor, Offset(x, 39.dp.toPx()), Offset(x + 9.dp.toPx(), 39.dp.toPx()), strokeWidth = 2.dp.toPx())
+                if (nested) Canvas(Modifier.matchParentSize()) {
+                    val elbow = 42.dp.toPx()
+                    val stroke = 1.5.dp.toPx()
+                    path.dropLast(1).forEachIndexed { depth, ancestor ->
+                        val x = (28 + depth.coerceAtMost(4) * 16).dp.toPx()
+                        drawLine(lineColor, Offset(x, 0f), Offset(x, if (ancestor in nextPath) size.height else elbow), strokeWidth = stroke)
+                    }
+                    if (node.parent != null) {
+                        val parentX = (28 + (node.depth - 1).coerceAtMost(4) * 16).dp.toPx()
+                        drawLine(lineColor, Offset(parentX, elbow), Offset((20 + indent).dp.toPx(), elbow), strokeWidth = stroke)
+                    }
+                    if (post.id in nextPath) {
+                        val ownX = (28 + indent).dp.toPx()
+                        drawLine(lineColor, Offset(ownX, elbow), Offset(ownX, size.height), strokeWidth = stroke)
+                    }
                 }
-            Column(Modifier.fillMaxWidth().padding(start = (20 + indent).dp, end = 20.dp, top = 20.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Surface(Modifier.fillMaxWidth().padding(start = (20 + indent).dp, end = 20.dp, top = 10.dp, bottom = 10.dp),
+                shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceContainerLow,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(plain(post.name).ifBlank { "Anonymous" }, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (node.parent == null) Text("OP", Modifier.padding(end = 8.dp), style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary)
                     Text("#${post.id}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (nested && node.parent != null) {
                     val parent = model.posts.find { it.id == node.parent }
-                    TextButton(onClick = { quoted = node.parent }) {
-                        Text("↳ To #${node.parent} · ${parent?.let { plain(it.name).ifBlank { "Anonymous" } } ?: "post"}: ${parent?.let { safePreview(it.comment).take(65) }.orEmpty()}",
-                            maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall)
+                    Row(Modifier.fillMaxWidth().clickable(onClickLabel = "Preview parent post") { quoted = node.parent },
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Icon(Icons.AutoMirrored.Outlined.Reply, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                        Text("To #${node.parent} · ${parent?.let { plain(it.name).ifBlank { "Anonymous" } } ?: "post"}: ${parent?.let { replySummary(it.comment).take(65) }.orEmpty()}",
+                            maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary)
                     }
                 } else if (node.references.isNotEmpty()) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -288,10 +331,10 @@ private fun ThreadScreen(model: ReaderModel, board: Board, id: Long) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (nested && node.descendants > 0) TextButton(onClick = {
                     collapsed = if (post.id in collapsed) collapsed - post.id else collapsed + post.id
-                }) { Text("${if (post.id in collapsed) "Show" else "Hide"} ${node.descendants} replies") }
+                }) { Text("${if (post.id in collapsed) "Show" else "Hide"} ${node.descendants} ${if (node.descendants == 1) "reply" else "replies"}") }
             }
             }
-            HorizontalDivider(Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .55f))
+            }
         }
         item {
             Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -299,6 +342,7 @@ private fun ThreadScreen(model: ReaderModel, board: Board, id: Long) {
                 Text("Uses your browser’s connection settings", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
+    }
     }
     quoted?.let { quoteId ->
         val post = model.posts.find { it.id == quoteId }
@@ -314,6 +358,10 @@ private fun ThreadScreen(model: ReaderModel, board: Board, id: Long) {
         }, confirmButton = { TextButton(onClick = { quoted = null }) { Text("Close") } })
     }
 }
+
+private fun replySummary(html: String): String = safePreview(html)
+    .replace(Regex("^(?:>>\\d+\\s*)+"), "")
+    .ifBlank { "Post" }
 
 @Composable
 private fun QuotedPostCard(model: ReaderModel, link: ReaderLink) {

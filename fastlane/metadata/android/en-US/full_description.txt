@@ -1,0 +1,9 @@
+Boardwalk is an unofficial, open-source Android reader for 4chan.
+
+Browse live boards and threads with a compact feed, a dedicated Popular Threads section, and board categories familiar from the website. Follow replies in a connected conversation view or switch to chronological order. Open 4chan links inside the app, preview cross-board quotes, and inspect media full-screen with zoom, paging, and swipe-down dismissal.
+
+Star boards, bookmark threads, and save discussion text for offline reading. Media files are downloaded separately when you choose to save them. Local backup files can restore favorites, bookmarks, offline discussions, and reading positions after reinstalling or changing devices. An optional HTTP proxy is available in Settings; no proxy service is bundled.
+
+Popular Threads is ranked by Boardwalk from a selection of board catalogs. It is not 4chan's unpublished homepage ranking. The public API is read-only, so posting opens the original website.
+
+Boardwalk is not affiliated with 4chan. Content is provided by 4chan: https://www.4chan.org/

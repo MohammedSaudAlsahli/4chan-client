@@ -1,0 +1,1 @@
+Popular Threads, website-style board categories, connected reply cards, pull-to-refresh, and swipe-down media dismissal. Added a new adaptive icon and release metadata.
