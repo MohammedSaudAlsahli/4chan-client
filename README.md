@@ -4,7 +4,7 @@ A native reader for real 4chan boards, built with Kotlin and Jetpack Compose. Bo
 
 ![Home showing popular threads](fastlane/metadata/android/en-US/images/phoneScreenshots/1-home.png)
 
-Boardwalk is licensed under [GPL-3.0-only](LICENSE). Source and issue reports live in this repository. Builds from the `main` branch are development builds; the F-Droid listing is being submitted and is not live yet.
+Boardwalk is licensed under [GPL-3.0-only](LICENSE). Source and issue reports live in this repository. Builds from the `main` branch are development builds. F-Droid packaging files are prepared, but submission is deferred and there is no F-Droid listing yet.
 
 ## Using the app
 
